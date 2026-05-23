@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Tactics Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --team-a: #4fc3f7;
+    --team-a-dark: #0288d1;
+    --team-b: #ff7043;
+    --team-b-dark: #e64a19;
+    --bg: #111418;
+    --panel: #1a1f26;
+    --panel-border: #2a3040;
+    --text: #e8eaf0;
+    --muted: #7a8499;
+    --accent: #ffd740;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--panel-border);
+    z-index: 10;
+    flex-shrink: 0;
+    gap: 8px;
+  }
+
+  .logo {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 17px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .logo span { color: var(--text); font-weight: 400; }
+
+  .header-right {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .header-right::-webkit-scrollbar { display: none; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--panel-border); }
+  .btn-ghost:active { background: var(--panel-border); }
+  .btn-accent { background: var(--accent); color: #111; }
+  .btn-accent:active { opacity: 0.8; }
+  .btn-danger { background: transparent; color: #ef5350; border: 1px solid #ef535044; }
+  .btn-danger:active { background: #ef535022; }
+
+  /* Bench badge */
+  .bench-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 9px;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+    background: transparent;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    color: var(--muted);
+  }
+  .bench-badge .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .bench-badge .dot.a { background: var(--team-a); }
+  .bench-badge .dot.b { background: var(--team-b); }
+  .bench-badge:active { background: var(--panel-border); }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 7px 12px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--panel-border);
+    overflow-x: auto;
+    flex-shrink: 0;
+    scrollbar-width: none;
+  }
+  .toolbar::-webkit-scrollbar { display: none; }
+
+  .tool-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .tool-btn.active { background: var(--accent); color: #111; border-color: var(--accent); }
+  .tool-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+  .toolbar-sep { width: 1px; height: 22px; background: var(--panel-border); flex-shrink: 0; margin: 0 2px; }
+
+  /* ── PITCH ── */
+  .pitch-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    padding: 8px;
+  }
+
+  #pitch-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  #pitch-svg { position: absolute; top:0; left:0; width:100%; height:100%; }
+
+  #draw-canvas {
+    position: absolute; top:0; left:0; width:100%; height:100%;
+    touch-action: none; z-index: 5;
+    pointer-events: none;
+  }
+
+  #arrow-svg {
+    position: absolute; top:0; left:0; width:100%; height:100%;
+    pointer-events: none; z-index: 6;
+  }
+
+  /* ── PLAYER TOKENS ── */
+  .player-token {
+    position: absolute;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800; font-size: 14px;
+    cursor: grab;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    user-select: none; -webkit-user-select: none;
+    touch-action: none;
+    border: 2px solid rgba(255,255,255,0.3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    transition: box-shadow 0.15s;
+  }
+  .player-token.dragging { cursor: grabbing; transform: translate(-50%, -50%) scale(1.15); z-index: 20; }
+  .player-token.team-a { background: var(--team-a); color: #0a1a2a; border-color: rgba(255,255,255,0.5); }
+  .player-token.team-b { background: var(--team-b); color: #1a0a00; border-color: rgba(255,255,255,0.4); }
+
+  .player-name-label {
+    position: absolute;
+    bottom: -17px; left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px; font-weight: 600;
+    color: rgba(255,255,255,0.85);
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+    pointer-events: none;
+    max-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── FLOATING ACTION POPUP ── */
+  .action-popup {
+    position: fixed;
+    z-index: 100;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 130px;
+  }
+  .action-popup.visible { display: flex; }
+  .popup-player-info {
+    padding: 8px 12px 6px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .popup-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 11px 14px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 14px; font-weight: 500;
+    background: transparent; border: none;
+    color: var(--text); cursor: pointer;
+    text-align: left;
+    transition: background 0.1s;
+  }
+  .popup-btn:active { background: var(--panel-border); }
+  .popup-btn + .popup-btn { border-top: 1px solid var(--panel-border); }
+  .popup-btn svg { width: 15px; height: 15px; color: var(--muted); flex-shrink: 0; }
+  .popup-btn.danger { color: #ef5350; }
+  .popup-btn.danger svg { color: #ef5350; }
+
+  /* ── MODALS ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.72);
+    z-index: 200;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 16px 16px 0 0;
+    padding: 20px 16px 28px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 88dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modal-handle {
+    width: 36px; height: 4px;
+    background: var(--panel-border);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+    flex-shrink: 0;
+  }
+
+  .modal h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px; font-weight: 800;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    margin-bottom: 16px; flex-shrink: 0;
+  }
+
+  .modal-scroll { overflow-y: auto; flex: 1; }
+
+  .modal-field { margin-bottom: 14px; }
+  .modal-field label {
+    display: block; font-size: 11px; color: var(--muted);
+    margin-bottom: 5px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .modal-field input, .modal-field select {
+    width: 100%;
+    background: var(--bg); border: 1px solid var(--panel-border);
+    border-radius: 8px; padding: 10px 12px;
+    color: var(--text); font-family: 'Barlow', sans-serif; font-size: 15px;
+    appearance: none; -webkit-appearance: none;
+  }
+  .modal-field input:focus, .modal-field select:focus { outline: none; border-color: var(--accent); }
+
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; flex-shrink: 0; }
+  .modal-actions .btn { flex: 1; padding: 12px; font-size: 14px; }
+
+  /* ── TABS ── */
+  .tab-bar {
+    display: flex; gap: 0;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px; overflow: hidden;
+    margin-bottom: 16px; flex-shrink: 0;
+  }
+  .tab {
+    flex: 1; padding: 9px 10px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 13px;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    background: transparent; border: none; color: var(--muted);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .tab.active { background: var(--accent); color: #111; }
+  .tab + .tab { border-left: 1px solid var(--panel-border); }
+
+  /* Team mode toggle */
+  .toggle-row {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--bg);
+    border-radius: 8px;
+    margin-bottom: 16px;
+    flex-shrink: 0;
+  }
+  .toggle-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--text);
+  }
+  .toggle-switch {
+    display: flex;
+    background: var(--panel-border);
+    border-radius: 6px; overflow: hidden;
+  }
+  .toggle-opt {
+    padding: 6px 12px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.04em;
+    background: transparent; border: none;
+    color: var(--muted); cursor: pointer;
+    transition: all 0.15s;
+  }
+  .toggle-opt.active { background: var(--accent); color: #111; }
+
+  /* Roster table */
+  .roster-table { width: 100%; border-collapse: collapse; }
+  .roster-table th {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted); text-align: left;
+    padding: 0 6px 8px;
+  }
+  .roster-table td { padding: 3px 4px; }
+  .roster-num-input {
+    width: 48px;
+    background: var(--bg); border: 1px solid var(--panel-border);
+    border-radius: 6px; padding: 7px 6px;
+    color: var(--text); font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px; font-weight: 700; text-align: center;
+    appearance: none; -webkit-appearance: none;
+  }
+  .roster-num-input:focus { outline: none; border-color: var(--accent); }
+  .roster-name-input {
+    width: 100%;
+    background: var(--bg); border: 1px solid var(--panel-border);
+    border-radius: 6px; padding: 7px 8px;
+    color: var(--text); font-family: 'Barlow', sans-serif; font-size: 13px;
+  }
+  .roster-name-input:focus { outline: none; border-color: var(--accent); }
+  .roster-table tr.starter td { opacity: 1; }
+  .roster-table tr.bench-row-item td { opacity: 0.6; }
+  .roster-section-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 6px 4px;
+    display: block;
+  }
+
+  /* Sub list */
+  .sub-list { display: flex; flex-direction: column; gap: 6px; }
+  .sub-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    cursor: pointer; transition: background 0.1s;
+    font-size: 14px;
+  }
+  .sub-item:active { background: var(--panel-border); }
+  .sub-dot {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800; font-size: 12px;
+  }
+
+  /* Arrow color picker */
+  .color-dots { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .color-dot {
+    width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+    border: 3px solid transparent; transition: border-color 0.15s;
+  }
+  .color-dot.selected { border-color: white; }
+
+  /* Bench modal list */
+  .bench-modal-list { display: flex; flex-direction: column; gap: 6px; }
+  .bench-modal-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    cursor: pointer; transition: background 0.1s;
+    font-size: 14px;
+  }
+  .bench-modal-item:active { background: var(--panel-border); }
+  .bench-modal-item .bm-info { flex: 1; }
+  .bench-modal-item .bm-name { font-weight: 600; }
+  .bench-modal-item .bm-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 80px; left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--accent); color: #111;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 13px;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 8px 16px; border-radius: 20px;
+    z-index: 300; opacity: 0; transition: all 0.2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">Tactics<span>Board</span></div>
+  <div class="header-right">
+    <button class="bench-badge" onclick="openBenchModal()" id="bench-badge-btn">
+      <span class="dot a"></span>
+      <span id="bench-count-a">0</span>
+      <span style="color:var(--panel-border);margin:0 2px">|</span>
+      <span class="dot b" id="bench-dot-b"></span>
+      <span id="bench-count-b">0</span>
+    </button>
+    <button class="btn btn-ghost" onclick="openRosterModal()">Roster</button>
+    <button class="btn btn-ghost" onclick="openArrowSettings()">Arrow</button>
+    <button class="btn btn-danger" onclick="clearArrows()">Clear</button>
+    <button class="btn btn-ghost" onclick="openResetModal()">Reset</button>
+  </div>
+</header>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <button class="tool-btn active" id="tool-move" onclick="setTool('move')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3"/>
+      <path d="M12 3v18M3 12h18"/>
+    </svg>
+    Move
+  </button>
+  <button class="tool-btn" id="tool-draw" onclick="setTool('draw')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M3 17c3-3 5-5 7-3s3 3 5 1 3-4 6-4"/>
+    </svg>
+    Draw
+  </button>
+</div>
+
+<!-- PITCH -->
+<div class="pitch-wrapper">
+  <div id="pitch-container">
+    <svg id="pitch-svg" viewBox="0 0 340 520" xmlns="http://www.w3.org/2000/svg">
+      <rect width="340" height="520" rx="4" fill="#2d5a1b"/>
+      <rect x="0" y="0" width="340" height="52" fill="#336b20" opacity="0.7"/>
+      <rect x="0" y="104" width="340" height="52" fill="#336b20" opacity="0.7"/>
+      <rect x="0" y="208" width="340" height="52" fill="#336b20" opacity="0.7"/>
+      <rect x="0" y="312" width="340" height="52" fill="#336b20" opacity="0.7"/>
+      <rect x="0" y="416" width="340" height="52" fill="#336b20" opacity="0.7"/>
+      <rect x="10" y="10" width="320" height="500" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+      <line x1="10" y1="260" x2="330" y2="260" stroke="rgba(255,255,255,0.8)" stroke-width="1.5"/>
+      <circle cx="170" cy="260" r="46" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.5"/>
+      <circle cx="170" cy="260" r="3" fill="rgba(255,255,255,0.8)"/>
+      <rect x="72" y="10" width="196" height="68" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.5"/>
+      <rect x="122" y="10" width="96" height="26" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.5"/>
+      <rect x="140" y="4" width="60" height="10" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+      <circle cx="170" cy="63" r="2.5" fill="rgba(255,255,255,0.8)"/>
+      <path d="M 137 78 A 38 38 0 0 1 203 78" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.5"/>
+      <rect x="72" y="442" width="196" height="68" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.5"/>
+      <rect x="122" y="484" width="96" height="26" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.5"/>
+      <rect x="140" y="506" width="60" height="10" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2"/>
+      <circle cx="170" cy="457" r="2.5" fill="rgba(255,255,255,0.8)"/>
+      <path d="M 137 442 A 38 38 0 0 0 203 442" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.5"/>
+      <path d="M 10 22 A 12 12 0 0 1 22 10" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.5"/>
+      <path d="M 318 10 A 12 12 0 0 1 330 22" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.5"/>
+      <path d="M 10 498 A 12 12 0 0 0 22 510" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.5"/>
+      <path d="M 318 510 A 12 12 0 0 0 330 498" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1.5"/>
+    </svg>
+    <svg id="arrow-svg" viewBox="0 0 340 520" preserveAspectRatio="none">
+      <defs></defs>
+      <g id="arrows-group"></g>
+    </svg>
+    <canvas id="draw-canvas"></canvas>
+    <div id="players-layer"></div>
+  </div>
+</div>
+
+<!-- FLOATING POPUP -->
+<div class="action-popup" id="action-popup">
+  <div class="popup-player-info" id="popup-player-info">Player</div>
+  <button class="popup-btn" onclick="popupEdit()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Edit
+  </button>
+  <button class="popup-btn" onclick="popupSub()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+    Sub Off
+  </button>
+</div>
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- ROSTER MODAL -->
+<div class="modal-overlay" id="roster-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Roster</h3>
+
+    <div class="toggle-row">
+      <span class="toggle-label">Teams</span>
+      <div class="toggle-switch">
+        <button class="toggle-opt active" id="mode-1" onclick="setTeamMode(1)">1 Team</button>
+        <button class="toggle-opt" id="mode-2" onclick="setTeamMode(2)">2 Teams</button>
+      </div>
+    </div>
+
+    <div class="tab-bar" id="roster-tabs">
+      <button class="tab active" id="tab-a" onclick="switchRosterTab('a')">🔵 Team A</button>
+      <button class="tab" id="tab-b" onclick="switchRosterTab('b')">🔴 Team B</button>
+    </div>
+
+    <div class="modal-scroll">
+      <!-- Team A -->
+      <div id="roster-panel-a">
+        <div class="modal-field">
+          <label>Formation</label>
+          <select id="roster-formation-a">
+            <option value="4-4-2">4-4-2</option>
+            <option value="4-3-3">4-3-3</option>
+            <option value="3-5-2">3-5-2</option>
+            <option value="4-2-3-1">4-2-3-1</option>
+          </select>
+        </div>
+        <table class="roster-table">
+          <thead><tr><th>#</th><th>Name</th></tr></thead>
+          <tbody id="roster-body-a"></tbody>
+        </table>
+      </div>
+      <!-- Team B -->
+      <div id="roster-panel-b" style="display:none">
+        <div class="modal-field">
+          <label>Formation</label>
+          <select id="roster-formation-b">
+            <option value="4-4-2">4-4-2</option>
+            <option value="4-3-3">4-3-3</option>
+            <option value="3-5-2">3-5-2</option>
+            <option value="4-2-3-1">4-2-3-1</option>
+          </select>
+        </div>
+        <table class="roster-table">
+          <thead><tr><th>#</th><th>Name</th></tr></thead>
+          <tbody id="roster-body-b"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('roster-modal')">Cancel</button>
+      <button class="btn btn-accent" onclick="saveRoster()">Apply to Pitch</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PLAYER MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal" style="max-height: auto;">
+    <div class="modal-handle"></div>
+    <h3>Edit Player</h3>
+    <div class="modal-field">
+      <label>Number</label>
+      <input type="number" id="edit-number" min="1" max="99" placeholder="e.g. 7"/>
+    </div>
+    <div class="modal-field">
+      <label>Name (optional)</label>
+      <input type="text" id="edit-name" placeholder="e.g. Ronaldo" maxlength="14"/>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="btn btn-accent" onclick="savePlayerEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUB MODAL -->
+<div class="modal-overlay" id="sub-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Sub Off <span id="sub-off-label" style="color:var(--muted)"></span></h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Select bench player to bring on</p>
+    <div class="modal-scroll">
+      <div class="sub-list" id="sub-list"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('sub-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- BENCH MODAL -->
+<div class="modal-overlay" id="bench-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Bench</h3>
+    <div class="tab-bar" id="bench-tabs">
+      <button class="tab active" id="bench-tab-a" onclick="switchBenchTab('a')">🔵 Team A</button>
+      <button class="tab" id="bench-tab-b" onclick="switchBenchTab('b')">🔴 Team B</button>
+    </div>
+    <div class="modal-scroll">
+      <div id="bench-panel-a"><div class="bench-modal-list" id="bench-list-a"></div></div>
+      <div id="bench-panel-b" style="display:none"><div class="bench-modal-list" id="bench-list-b"></div></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('bench-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- BRING ON MODAL (from bench) -->
+<div class="modal-overlay" id="bringon-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Bring On <span id="bringon-label" style="color:var(--muted)"></span></h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Select player to sub off</p>
+    <div class="modal-scroll">
+      <div class="sub-list" id="bringon-list"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('bringon-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ARROW SETTINGS -->
+<div class="modal-overlay" id="arrow-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Arrow Style</h3>
+    <div class="modal-field">
+      <label>Color</label>
+      <div class="color-dots">
+        <div class="color-dot selected" style="background:#ffd740" onclick="setArrowColor('yellow',this)"></div>
+        <div class="color-dot" style="background:#ff5252" onclick="setArrowColor('red',this)"></div>
+        <div class="color-dot" style="background:#ffffff" onclick="setArrowColor('white',this)"></div>
+        <div class="color-dot" style="background:#00e5ff" onclick="setArrowColor('cyan',this)"></div>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label>Style</label>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button class="btn btn-accent" id="style-solid" onclick="setArrowStyle('solid')">Solid</button>
+        <button class="btn btn-ghost" id="style-dashed" onclick="setArrowStyle('dashed')">Dashed</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-accent" style="flex:1" onclick="closeModal('arrow-modal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESET -->
+<div class="modal-overlay" id="reset-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Reset Board?</h3>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:16px">Clears all arrows and resets players to default formations.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('reset-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="resetBoard()">Reset</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+
+let currentTool = 'move';
+let isDrawing = false;
+let currentPath = [];
+let arrows = [];
+let arrowColor = 'yellow';
+let arrowStyle = 'solid';
+let editingPlayerId = null;
+let subOffPlayerId = null;   // player on pitch being subbed off
+let bringOnPlayerId = null;  // bench player being brought on
+let teamMode = 1;            // 1 or 2
+let activeRosterTab = 'a';
+let activeBenchTab = 'a';
+let popupPlayerId = null;
+
+const COLORS = {
+  yellow: { stroke: '#ffd740' },
+  red:    { stroke: '#ff5252' },
+  white:  { stroke: '#ffffff' },
+  cyan:   { stroke: '#00e5ff' },
+};
+
+const FORMATIONS = {
+  '4-4-2': {
+    a: [[50,88],[18,75],[38,75],[62,75],[82,75],[18,58],[38,58],[62,58],[82,58],[35,42],[65,42]],
+    b: [[50,12],[18,25],[38,25],[62,25],[82,25],[18,42],[38,42],[62,42],[82,42],[35,58],[65,58]]
+  },
+  '4-3-3': {
+    a: [[50,88],[18,75],[38,75],[62,75],[82,75],[28,58],[50,55],[72,58],[20,40],[50,36],[80,40]],
+    b: [[50,12],[18,25],[38,25],[62,25],[82,25],[28,42],[50,45],[72,42],[20,60],[50,64],[80,60]]
+  },
+  '3-5-2': {
+    a: [[50,88],[25,76],[50,74],[75,76],[12,60],[30,57],[50,54],[70,57],[88,60],[36,40],[64,40]],
+    b: [[50,12],[25,24],[50,26],[75,24],[12,40],[30,43],[50,46],[70,43],[88,40],[36,60],[64,60]]
+  },
+  '4-2-3-1': {
+    a: [[50,88],[18,76],[38,76],[62,76],[82,76],[35,62],[65,62],[20,50],[50,47],[80,50],[50,36]],
+    b: [[50,12],[18,24],[38,24],[62,24],[82,24],[35,38],[65,38],[20,50],[50,53],[80,50],[50,64]]
+  }
+};
+
+let players = { a: [], b: [] };
+
+function initPlayers(formA = '4-4-2', formB = '4-4-2') {
+  players.a = [];
+  players.b = [];
+  ['a','b'].forEach(t => {
+    const form = t === 'a' ? formA : formB;
+    const pos = FORMATIONS[form][t];
+    for (let i = 0; i < 11; i++) {
+      players[t].push({ id:`${t}${i}`, number: i+1, name:'', x: pos[i][0], y: pos[i][1], onBench: false, team: t });
+    }
+    for (let i = 11; i < 20; i++) {
+      players[t].push({ id:`${t}${i}`, number: i+1, name:'', x:0, y:0, onBench: true, team: t });
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// PITCH UTILS
+// ═══════════════════════════════════════════════════════
+
+function getPitchRect() { return document.getElementById('pitch-container').getBoundingClientRect(); }
+
+// ═══════════════════════════════════════════════════════
+// RENDER PLAYERS
+// ═══════════════════════════════════════════════════════
+
+function renderPlayers() {
+  const layer = document.getElementById('players-layer');
+  layer.innerHTML = '';
+
+  const toRender = [
+    ...players.a.filter(p => !p.onBench),
+    ...(teamMode === 2 ? players.b.filter(p => !p.onBench) : [])
+  ];
+
+  toRender.forEach(p => {
+    const token = document.createElement('div');
+    token.className = `player-token team-${p.team}`;
+    token.id = `token-${p.id}`;
+    token.style.left = `${p.x}%`;
+    token.style.top = `${p.y}%`;
+    token.textContent = p.number;
+
+    if (p.name) {
+      const lbl = document.createElement('div');
+      lbl.className = 'player-name-label';
+      lbl.textContent = p.name;
+      token.appendChild(lbl);
+    }
+
+    makeDraggable(token, p);
+    makeTapHandler(token, p);
+    layer.appendChild(token);
+  });
+
+  updateBenchBadge();
+}
+
+function updateBenchBadge() {
+  const countA = players.a.filter(p => p.onBench).length;
+  const countB = players.b.filter(p => p.onBench).length;
+  document.getElementById('bench-count-a').textContent = countA;
+  document.getElementById('bench-count-b').textContent = countB;
+  const dotB = document.getElementById('bench-dot-b');
+  if (teamMode === 1) { dotB.style.display = 'none'; document.getElementById('bench-count-b').style.display = 'none'; }
+  else { dotB.style.display = ''; document.getElementById('bench-count-b').style.display = ''; }
+}
+
+// ═══════════════════════════════════════════════════════
+// DRAG
+// ═══════════════════════════════════════════════════════
+
+function makeDraggable(el, player) {
+  let startX, startY, startPX, startPY, dragging = false, moved = false;
+
+  function onStart(clientX, clientY) {
+    if (currentTool !== 'move') return;
+    dragging = true; moved = false;
+    startX = clientX; startY = clientY;
+    startPX = player.x; startPY = player.y;
+    el.style.zIndex = 20;
+    el.classList.add('dragging');
+  }
+
+  function onMove(clientX, clientY) {
+    if (!dragging) return;
+    const r = getPitchRect();
+    const dx = ((clientX - startX) / r.width) * 100;
+    const dy = ((clientY - startY) / r.height) * 100;
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) moved = true;
+    player.x = Math.max(2, Math.min(98, startPX + dx));
+    player.y = Math.max(2, Math.min(98, startPY + dy));
+    el.style.left = `${player.x}%`;
+    el.style.top = `${player.y}%`;
+  }
+
+  function onEnd() {
+    if (!dragging) return;
+    dragging = false;
+    el.style.zIndex = 10;
+    el.classList.remove('dragging');
+    if (moved) saveState();
+  }
+
+  el.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientX, e.clientY); });
+  window.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
+  window.addEventListener('mouseup', onEnd);
+
+  el.addEventListener('touchstart', e => {
+    if (currentTool !== 'move') return;
+    onStart(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  el.addEventListener('touchmove', e => { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+  el.addEventListener('touchend', onEnd, { passive: true });
+}
+
+// ═══════════════════════════════════════════════════════
+// TAP / LONG PRESS → POPUP
+// ═══════════════════════════════════════════════════════
+
+function makeTapHandler(el, player) {
+  let pressTimer;
+  let touchMoved = false;
+  let lastTap = 0;
+
+  function showPopupFor(id, clientX, clientY) {
+    popupPlayerId = id;
+    const p = findPlayer(id);
+    document.getElementById('popup-player-info').textContent =
+      p.name ? `#${p.number} ${p.name}` : `Player #${p.number}`;
+    positionPopup(clientX, clientY);
+  }
+
+  el.addEventListener('touchstart', e => {
+    if (currentTool !== 'move') return;
+    touchMoved = false;
+    const touch = e.touches[0];
+    pressTimer = setTimeout(() => {
+      if (!touchMoved) showPopupFor(player.id, touch.clientX, touch.clientY);
+    }, 500);
+    // double tap
+    const now = Date.now();
+    if (now - lastTap < 300) {
+      clearTimeout(pressTimer);
+      showPopupFor(player.id, touch.clientX, touch.clientY);
+    }
+    lastTap = now;
+  }, { passive: true });
+
+  el.addEventListener('touchmove', () => { touchMoved = true; clearTimeout(pressTimer); }, { passive: true });
+  el.addEventListener('touchend', () => clearTimeout(pressTimer), { passive: true });
+  el.addEventListener('dblclick', e => showPopupFor(player.id, e.clientX, e.clientY));
+}
+
+function positionPopup(clientX, clientY) {
+  const popup = document.getElementById('action-popup');
+  popup.classList.add('visible');
+  const pw = popup.offsetWidth || 140;
+  const ph = popup.offsetHeight || 120;
+  const margin = 10;
+  let x = clientX - pw / 2;
+  let y = clientY - ph - 20;
+  // flip below if near top
+  if (y < 60) y = clientY + 20;
+  // clamp horizontal
+  x = Math.max(margin, Math.min(window.innerWidth - pw - margin, x));
+  popup.style.left = `${x}px`;
+  popup.style.top = `${y}px`;
+}
+
+function hidePopup() {
+  document.getElementById('action-popup').classList.remove('visible');
+  popupPlayerId = null;
+}
+
+document.addEventListener('touchstart', e => {
+  const popup = document.getElementById('action-popup');
+  if (popup.classList.contains('visible') && !popup.contains(e.target)) hidePopup();
+}, { passive: true });
+document.addEventListener('mousedown', e => {
+  const popup = document.getElementById('action-popup');
+  if (popup.classList.contains('visible') && !popup.contains(e.target)) hidePopup();
+});
+
+function popupEdit() {
+  const id = popupPlayerId; hidePopup();
+  editingPlayerId = id;
+  const p = findPlayer(id);
+  document.getElementById('edit-number').value = p.number;
+  document.getElementById('edit-name').value = p.name || '';
+  openModal('edit-modal');
+}
+
+function popupSub() {
+  const id = popupPlayerId; hidePopup();
+  openSubOffModal(id);
+}
+
+// ═══════════════════════════════════════════════════════
+// TOOL
+// ═══════════════════════════════════════════════════════
+
+function setTool(tool) {
+  currentTool = tool;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tool-${tool}`)?.classList.add('active');
+  const canvas = document.getElementById('draw-canvas');
+  if (tool === 'draw') { canvas.style.cursor = 'crosshair'; canvas.style.pointerEvents = 'all'; }
+  else { canvas.style.cursor = 'default'; canvas.style.pointerEvents = 'none'; }
+  hidePopup();
+}
+
+// ═══════════════════════════════════════════════════════
+// DRAWING
+// ═══════════════════════════════════════════════════════
+
+const canvas = document.getElementById('draw-canvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const r = document.getElementById('pitch-container').getBoundingClientRect();
+  canvas.width = r.width; canvas.height = r.height;
+}
+
+function getCanvasPoint(e) {
+  const r = document.getElementById('pitch-container').getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: ((clientX - r.left) / r.width) * 100, y: ((clientY - r.top) / r.height) * 100 };
+}
+
+canvas.addEventListener('mousedown', startDraw);
+canvas.addEventListener('touchstart', startDraw, { passive: false });
+canvas.addEventListener('mousemove', continueDraw);
+canvas.addEventListener('touchmove', continueDraw, { passive: false });
+canvas.addEventListener('mouseup', endDraw);
+canvas.addEventListener('touchend', endDraw, { passive: true });
+
+function startDraw(e) {
+  if (currentTool !== 'draw') return;
+  e.preventDefault();
+  isDrawing = true;
+  currentPath = [getCanvasPoint(e)];
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function continueDraw(e) {
+  if (!isDrawing) return;
+  e.preventDefault();
+  currentPath.push(getCanvasPoint(e));
+  redrawCanvas();
+}
+
+function redrawCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (currentPath.length < 2) return;
+  ctx.strokeStyle = COLORS[arrowColor].stroke;
+  ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.setLineDash(arrowStyle === 'dashed' ? [8,5] : []);
+  ctx.beginPath();
+  ctx.moveTo((currentPath[0].x/100)*canvas.width, (currentPath[0].y/100)*canvas.height);
+  for (let i = 1; i < currentPath.length; i++)
+    ctx.lineTo((currentPath[i].x/100)*canvas.width, (currentPath[i].y/100)*canvas.height);
+  ctx.stroke();
+}
+
+function endDraw(e) {
+  if (!isDrawing) return;
+  isDrawing = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (currentPath.length < 5) return;
+  arrows.push({ path: currentPath.slice(), color: arrowColor, style: arrowStyle, id: Date.now() });
+  renderArrows();
+  saveState();
+}
+
+// ═══════════════════════════════════════════════════════
+// ARROWS
+// ═══════════════════════════════════════════════════════
+
+function renderArrows() {
+  const g = document.getElementById('arrows-group');
+  g.innerHTML = '';
+  arrows.forEach(arrow => {
+    if (arrow.path.length < 2) return;
+    const color = COLORS[arrow.color];
+    const pts = arrow.path.map(p => ({ x: (p.x/100)*340, y: (p.y/100)*520 }));
+    let d = `M ${pts[0].x} ${pts[0].y}`;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mx = (pts[i].x + pts[i+1].x)/2, my = (pts[i].y + pts[i+1].y)/2;
+      d += ` Q ${pts[i].x} ${pts[i].y} ${mx} ${my}`;
+    }
+    d += ` L ${pts[pts.length-1].x} ${pts[pts.length-1].y}`;
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', d);
+    path.setAttribute('stroke', color.stroke);
+    path.setAttribute('stroke-width','3');
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke-linecap','round');
+    path.setAttribute('stroke-linejoin','round');
+    if (arrow.style === 'dashed') path.setAttribute('stroke-dasharray','8 5');
+    path.style.pointerEvents = 'stroke';
+    let lastTap = 0;
+    path.addEventListener('click', () => {
+      const now = Date.now();
+      if (now - lastTap < 400) { arrows = arrows.filter(a => a.id !== arrow.id); renderArrows(); saveState(); }
+      lastTap = now;
+    });
+    g.appendChild(path);
+  });
+}
+
+function clearArrows() { arrows = []; renderArrows(); saveState(); showToast('Arrows cleared'); }
+
+// ═══════════════════════════════════════════════════════
+// ROSTER MODAL
+// ═══════════════════════════════════════════════════════
+
+function openRosterModal() {
+  buildRosterTable('a');
+  buildRosterTable('b');
+  document.getElementById('roster-formation-a').value = currentFormation.a;
+  document.getElementById('roster-formation-b').value = currentFormation.b;
+  switchRosterTab('a');
+  setTeamMode(teamMode, false);
+  openModal('roster-modal');
+}
+
+function buildRosterTable(team) {
+  const tbody = document.getElementById(`roster-body-${team}`);
+  tbody.innerHTML = '';
+
+  const starters = players[team].filter(p => !p.onBench);
+  const bench = players[team].filter(p => p.onBench);
+
+  function makeRow(p, cls) {
+    const tr = document.createElement('tr');
+    tr.className = cls;
+    tr.innerHTML = `
+      <td><input class="roster-num-input" type="number" min="1" max="99" value="${p.number}" data-id="${p.id}" data-field="number"/></td>
+      <td><input class="roster-name-input" type="text" maxlength="14" placeholder="Name" value="${p.name}" data-id="${p.id}" data-field="name"/></td>
+    `;
+    return tr;
+  }
+
+  const startLabel = document.createElement('tr');
+  startLabel.innerHTML = `<td colspan="2"><span class="roster-section-label">Starting 11</span></td>`;
+  tbody.appendChild(startLabel);
+  starters.forEach(p => tbody.appendChild(makeRow(p, 'starter')));
+
+  if (bench.length > 0) {
+    const benchLabel = document.createElement('tr');
+    benchLabel.innerHTML = `<td colspan="2"><span class="roster-section-label">Bench</span></td>`;
+    tbody.appendChild(benchLabel);
+    bench.forEach(p => tbody.appendChild(makeRow(p, 'bench-row-item')));
+  }
+}
+
+function switchRosterTab(team) {
+  activeRosterTab = team;
+  document.getElementById('roster-panel-a').style.display = team === 'a' ? '' : 'none';
+  document.getElementById('roster-panel-b').style.display = team === 'b' ? '' : 'none';
+  document.getElementById('tab-a').className = 'tab' + (team === 'a' ? ' active' : '');
+  document.getElementById('tab-b').className = 'tab' + (team === 'b' ? ' active' : '');
+}
+
+function setTeamMode(mode, render = true) {
+  teamMode = mode;
+  document.getElementById('mode-1').className = 'toggle-opt' + (mode === 1 ? ' active' : '');
+  document.getElementById('mode-2').className = 'toggle-opt' + (mode === 2 ? ' active' : '');
+  const tabB = document.getElementById('tab-b');
+  if (mode === 1) {
+    tabB.style.display = 'none';
+    switchRosterTab('a');
+  } else {
+    tabB.style.display = '';
+  }
+  if (render) { renderPlayers(); renderArrows(); }
+}
+
+let currentFormation = { a: '4-4-2', b: '4-4-2' };
+
+function saveRoster() {
+  // Read all inputs
+  ['a','b'].forEach(team => {
+    const inputs = document.querySelectorAll(`#roster-body-${team} input`);
+    inputs.forEach(input => {
+      const id = input.dataset.id;
+      const field = input.dataset.field;
+      const p = findPlayer(id);
+      if (!p) return;
+      if (field === 'number') { const n = parseInt(input.value); if (!isNaN(n) && n > 0) p.number = n; }
+      if (field === 'name') p.name = input.value.trim();
+    });
+  });
+
+  // Apply formations
+  const newFormA = document.getElementById('roster-formation-a').value;
+  const newFormB = document.getElementById('roster-formation-b').value;
+
+  ['a','b'].forEach(t => {
+    const form = t === 'a' ? newFormA : newFormB;
+    if (FORMATIONS[form]) {
+      const pos = FORMATIONS[form][t];
+      players[t].filter(p => !p.onBench).forEach((p, i) => {
+        if (pos[i]) { p.x = pos[i][0]; p.y = pos[i][1]; }
+      });
+      currentFormation[t] = form;
+    }
+  });
+
+  closeModal('roster-modal');
+  renderPlayers();
+  saveState();
+  showToast('Roster applied');
+}
+
+// ═══════════════════════════════════════════════════════
+// EDIT PLAYER
+// ═══════════════════════════════════════════════════════
+
+function findPlayer(id) { return [...players.a, ...players.b].find(p => p.id === id); }
+
+function savePlayerEdit() {
+  const p = findPlayer(editingPlayerId);
+  if (!p) return;
+  const n = parseInt(document.getElementById('edit-number').value);
+  if (!isNaN(n) && n > 0) p.number = n;
+  p.name = document.getElementById('edit-name').value.trim();
+  closeModal('edit-modal');
+  renderPlayers();
+  saveState();
+  showToast('Player updated');
+}
+
+// ═══════════════════════════════════════════════════════
+// SUB OFF (from pitch → pick bench player)
+// ═══════════════════════════════════════════════════════
+
+function openSubOffModal(playerId) {
+  subOffPlayerId = playerId;
+  const p = findPlayer(playerId);
+  document.getElementById('sub-off-label').textContent = p.name ? `#${p.number} ${p.name}` : `#${p.number}`;
+  const bench = players[p.team].filter(pl => pl.onBench);
+  const list = document.getElementById('sub-list');
+  list.innerHTML = '';
+  if (bench.length === 0) {
+    list.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0">No bench players available</p>';
+  } else {
+    bench.forEach(bp => {
+      const item = document.createElement('div');
+      item.className = 'sub-item';
+      item.innerHTML = `<div class="sub-dot team-${p.team}" style="background:var(--team-${p.team});color:#111">${bp.number}</div><div><div style="font-weight:600">#${bp.number}</div>${bp.name ? `<div style="font-size:12px;color:var(--muted)">${bp.name}</div>` : ''}</div>`;
+      item.onclick = () => makeSub(playerId, bp.id);
+      list.appendChild(item);
+    });
+  }
+  openModal('sub-modal');
+}
+
+function makeSub(onPitchId, benchId) {
+  const onPitch = findPlayer(onPitchId);
+  const bench = findPlayer(benchId);
+  if (!onPitch || !bench) return;
+  bench.x = onPitch.x; bench.y = onPitch.y;
+  bench.onBench = false;
+  onPitch.onBench = true;
+  closeModal('sub-modal');
+  renderPlayers();
+  saveState();
+  showToast(`#${bench.number} on · #${onPitch.number} off`);
+}
+
+// ═══════════════════════════════════════════════════════
+// BENCH MODAL (badge tap → see bench, bring on)
+// ═══════════════════════════════════════════════════════
+
+function openBenchModal() {
+  buildBenchList('a');
+  buildBenchList('b');
+  switchBenchTab(teamMode === 1 ? 'a' : 'a');
+  const tabB = document.getElementById('bench-tab-b');
+  tabB.style.display = teamMode === 2 ? '' : 'none';
+  openModal('bench-modal');
+}
+
+function buildBenchList(team) {
+  const list = document.getElementById(`bench-list-${team}`);
+  list.innerHTML = '';
+  const bench = players[team].filter(p => p.onBench);
+  if (bench.length === 0) {
+    list.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0">No bench players</p>';
+    return;
+  }
+  bench.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'bench-modal-item';
+    item.innerHTML = `
+      <div class="sub-dot team-${team}" style="background:var(--team-${team});color:#111;width:32px;height:32px;font-size:13px">${p.number}</div>
+      <div class="bm-info">
+        <div class="bm-name">#${p.number}${p.name ? ' — ' + p.name : ''}</div>
+        <div class="bm-sub">Tap to bring on</div>
+      </div>
+    `;
+    item.onclick = () => openBringOnModal(p.id);
+    list.appendChild(item);
+  });
+}
+
+function switchBenchTab(team) {
+  activeBenchTab = team;
+  document.getElementById('bench-panel-a').style.display = team === 'a' ? '' : 'none';
+  document.getElementById('bench-panel-b').style.display = team === 'b' ? '' : 'none';
+  document.getElementById('bench-tab-a').className = 'tab' + (team === 'a' ? ' active' : '');
+  document.getElementById('bench-tab-b').className = 'tab' + (team === 'b' ? ' active' : '');
+}
+
+function openBringOnModal(benchPlayerId) {
+  bringOnPlayerId = benchPlayerId;
+  const bp = findPlayer(benchPlayerId);
+  document.getElementById('bringon-label').textContent = bp.name ? `#${bp.number} ${bp.name}` : `#${bp.number}`;
+  const onPitch = players[bp.team].filter(p => !p.onBench);
+  const list = document.getElementById('bringon-list');
+  list.innerHTML = '';
+  onPitch.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'sub-item';
+    item.innerHTML = `<div class="sub-dot team-${bp.team}" style="background:var(--team-${bp.team});color:#111">${p.number}</div><div><div style="font-weight:600">#${p.number}</div>${p.name ? `<div style="font-size:12px;color:var(--muted)">${p.name}</div>` : ''}</div>`;
+    item.onclick = () => { makeSub(p.id, benchPlayerId); closeModal('bench-modal'); closeModal('bringon-modal'); };
+    list.appendChild(item);
+  });
+  openModal('bringon-modal');
+}
+
+// ═══════════════════════════════════════════════════════
+// ARROW SETTINGS
+// ═══════════════════════════════════════════════════════
+
+function openArrowSettings() { openModal('arrow-modal'); }
+function setArrowColor(color, el) {
+  arrowColor = color;
+  document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function setArrowStyle(style) {
+  arrowStyle = style;
+  document.getElementById('style-solid').className = style === 'solid' ? 'btn btn-accent' : 'btn btn-ghost';
+  document.getElementById('style-dashed').className = style === 'dashed' ? 'btn btn-accent' : 'btn btn-ghost';
+}
+
+// ═══════════════════════════════════════════════════════
+// RESET
+// ═══════════════════════════════════════════════════════
+
+function openResetModal() { openModal('reset-modal'); }
+function resetBoard() {
+  arrows = [];
+  currentFormation = { a: '4-4-2', b: '4-4-2' };
+  teamMode = 1;
+  initPlayers();
+  closeModal('reset-modal');
+  renderPlayers();
+  renderArrows();
+  setTeamMode(1, false);
+  saveState();
+  showToast('Board reset');
+}
+
+// ═══════════════════════════════════════════════════════
+// MODAL HELPERS
+// ═══════════════════════════════════════════════════════
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+});
+
+// ═══════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+// ═══════════════════════════════════════════════════════
+// PERSIST (localStorage)
+// ═══════════════════════════════════════════════════════
+
+const STORAGE_KEY = 'tactics-board-v1';
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      players: { a: players.a, b: players.b },
+      teamMode,
+      currentFormation,
+      arrows
+    }));
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (s.players) { players.a = s.players.a || []; players.b = s.players.b || []; }
+    if (s.teamMode) teamMode = s.teamMode;
+    if (s.currentFormation) currentFormation = s.currentFormation;
+    if (s.arrows) arrows = s.arrows;
+    return true;
+  } catch(e) { return false; }
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+
+const loaded = loadState();
+if (!loaded) initPlayers();
+setTool('move');
+setTeamMode(teamMode, false);
+setTimeout(() => { resizeCanvas(); renderPlayers(); renderArrows(); }, 100);
+window.addEventListener('resize', () => { resizeCanvas(); renderPlayers(); renderArrows(); });
+</script>
+</body>
+</html>
